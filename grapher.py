@@ -1,10 +1,8 @@
-# pip install ElementTree
-# pip install pygal
-# pip install cairosvg
 import xml.etree.ElementTree as ET
 import operator
 import csv
 import os
+import lxml
 import shutil
 import sys
 import pygal
@@ -113,7 +111,7 @@ def generateOutput(list, title, headers, filename, outputFormat):
 	else:
 		x = []
 		y = []
-		bar_chart=pygal.Bar(x_label_rotation=50)
+		bar_chart=pygal.Bar(x_label_rotation=50, human_redable=True)
 		for row in list:
 			x.append(row[0])
 			y.append(row[1])
