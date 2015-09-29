@@ -21,7 +21,7 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-
+    
 class HostObj(object):
     def __init__(self,ipAddr,tcpPorts,udpPorts,services,detailedServices,operSys):
         self.ipAddr=ipAddr
