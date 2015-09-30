@@ -1,4 +1,4 @@
-# NMAPgrapher
+# NMAPgrapher v0.1a
 A tool to generate graph and other output from NMAP XML files. 
 
 ###What is it for?
@@ -22,4 +22,4 @@ The following output formats are supported:
 Detailed usage information can be found at http://www.attactics.org/2015/09/nmapgrapher-tool-for-digesting-nmap-xml.html
 
 ###Your code sucks and it's broken
-I'm not a python ninja, so that is possible. Feel free to contact me on twitter (@evasive) and I can fix any bugs or issues you are experiencing.
+I'm not a python ninja and the tool is in alpha, so that is quite possible. Feel free to contact me on twitter (@evasiv3) and I can fix any bugs or issues you are experiencing.
