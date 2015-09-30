@@ -2,12 +2,11 @@ import xml.etree.ElementTree as ET
 import operator
 import csv
 import os
-import lxml
 import shutil
 import sys
 import pygal
+from pygal.style import Style
 import argparse
-
 allhosts = []
 
 class bcolors:
@@ -29,110 +28,133 @@ class HostObj(object):
         self.detailedServices=detailedServices
         self.operSys=operSys
 
-def populateObjects(file):
-	e = ET.parse(file).getroot()
-	tcpPortList = []
-	udpPortList = []
-	detailedServiceList = []
-	serviceList = []
-	osList = []
-	for child in e:
-		for port in child:
-			if port.tag == "address":
-				ipAddr = port.attrib['addr']
-			topOS = False
-			for lol in port:
-				if lol.tag =="osmatch":
-					if lol.attrib['name']:
-						if not topOS:
-							osList.append(lol.attrib['name'])
-							topOS = True
-				if lol.tag == "port":
-					if lol.attrib['protocol'] == 'tcp':
-						tcpPortList.append(lol.attrib['portid'])
-					if lol.attrib['protocol'] == 'udp':
-						udpPortList.append(lol.attrib['portid'])
-					for service in lol:
-						if service.tag == "service":
-							detailedServiceList.append(lol.attrib['protocol']+'/'+lol.attrib['portid']+' '+ service.attrib['name'])
-							serviceList.append(service.attrib['name'])
-							
-			if tcpPortList or udpPortList:
-				allhosts.append(HostObj(ipAddr, tcpPortList, udpPortList, serviceList, detailedServiceList, osList))
-				tcpPortList = []
-				udpPortList = []
-				serviceList = []
-				detailedServiceList = []
-				osList = []
-
-def generateHostPortListOutput(list,filename):
-	shutil.copy('css/styles.css', args.outputBaseName+'/styles.css')
-	f=open(args.outputBaseName+'/'+filename+'.html','w+')
-	f.write('<!DOCTYPE html>\n<html>\n<head>\n<link rel="stylesheet" href="styles.css">\n</head>\n<body>\n')
-	for item in list:
-		f.write('<div class="table">\n<table class="table">\n<tr>\n')
-		f.write('<td>\n'+item[0]+'\n</td>\n')
-		f.write('</tr>\n')
-		if item[1]:
-		 	for tcpPort in item[1]:
-				f.write('<tr>\n')
-				f.write('<td> TCP '+str(tcpPort)+'</td>')
-				f.write('</tr>\n')
-		f.write('</table>\n</div>\n<br>\n<br>')
-	f.write('\n</body>\n</html>')
-	f.close
-
-def generateOutput(list, title, headers, filename, outputFormat):
-	if not os.path.exists(args.outputBaseName):
-		os.makedirs(args.outputBaseName)
-	if outputFormat == 'html':
-		shutil.copy('css/styles.css', args.outputBaseName+'/styles.css')
-		f=open(args.outputBaseName+'/'+filename+'.html','w+')
-		f.write('<!DOCTYPE html>\n<html>\n<head>\n<link rel="stylesheet" href="styles.css">\n</head>\n<body>\n')
-		f.write('<h1 class="title">\n'+title+'</h1>\n')
-		f.write('<div class="table">\n<table class="table">\n<tr>\n')
-		for i in range(len(headers)):
-			f.write('<td>\n'+headers[i]+'\n</td>\n')
-		f.write('</tr>\n')
-		for item in list:
-			f.write('<tr>\n')
-			for i in range(len(headers)):
-				f.write('<td>'+str(item[i])+'</td>')
-			f.write('</tr>\n')
-		f.write('</table>\n</body>\n</html>')
-		f.close
-	elif outputFormat == 'csv':
-		f=open(args.outputBaseName+'/'+filename,'w+')
-		wrcsv = csv.writer(f, delimiter=',')
-		wrcsv.writerow(headers)
-		for item in list:
-			wrcsv.writerow(item)
-		f.close
-	else:
-		x = []
-		y = []
-		bar_chart=pygal.Bar(x_label_rotation=50, human_redable=True)
-		for row in list:
-			x.append(row[0])
-			y.append(row[1])
-		bar_chart.title = title
-		bar_chart.x_labels = map(str, x)
-		bar_chart.add('Total', y)
-		if outputFormat == "png":
-			bar_chart.render_to_png(args.outputBaseName+'/'+filename+'.png')
-		if outputFormat == "svg":
-			bar_chart.render_to_file(args.outputBaseName+'/'+filename+'.svg')
-
 def printBanner():
     banner=""" _   _ __  __    _    ____                       _
 | \ | |  \/  |  / \  |  _ \ __ _ _ __ __ _ _ __ | |__   ___ _ __
 |  \| | |\/| | / _ \ | |_) / _` | \'__/ _` | \'_ \| \'_ \ / _ \ \'__|
 | |\  | |  | |/ ___ \|  __/ (_| | | | (_| | |_) | | | |  __/ |
 |_| \_|_|  |_/_/   \_\_|   \__, |_|  \__,_| .__/|_| |_|\___|_|
-              attactics.org|___/          |_|@evasiv3
+              attactics.org|___/          |_|@evasiv3     v0.1a
    | Generates graph, html, and csv data from NMAP XML files |      """
     print banner
     print ''
+
+def populateObjects(file):
+    e = ET.parse(file).getroot()
+    tcpPortList = []
+    udpPortList = []
+    detailedServiceList = []
+    serviceList = []
+    osList = []
+    for child in e:
+        for host in child:
+            if host.tag == "address":
+                ipAddr = host.attrib['addr']
+            topOS = False
+            for info in host:
+                if info.tag =="osmatch":
+                    if info.attrib['name']:
+                        if not topOS:
+                            osList.append(info.attrib['name'])
+                            topOS = True
+                if info.tag == "port":
+                    if info.attrib['protocol'] == 'tcp':
+                        tcpPortList.append(info.attrib['portid'])
+                    if info.attrib['protocol'] == 'udp':
+                        udpPortList.append(info.attrib['portid'])
+                    for service in info:
+                        if service.tag == "service":
+                            detailedServiceList.append(
+                            info.attrib['protocol']+
+                            '/'+info.attrib['portid']+' '+
+                            service.attrib['name'])
+                            serviceList.append(service.attrib['name'])
+            if tcpPortList or udpPortList:
+                allhosts.append(HostObj(
+                ipAddr, 
+                tcpPortList, 
+                udpPortList, 
+                serviceList, 
+                detailedServiceList, 
+                osList))
+                tcpPortList = []
+                udpPortList = []
+                serviceList = []
+                detailedServiceList = []
+                osList = []
+
+def generateHostPortListOutput(hostList,filename):
+    if not os.path.exists(args.outputBaseName):
+        os.makedirs(args.outputBaseName)
+    shutil.copy('css/htmlStyles.css', args.outputBaseName+'/htmlStyles.css')
+    f=open(args.outputBaseName+'/'+filename,'w+')
+    f.write('<!DOCTYPE html>\n<html>\n<head>\n<link rel="stylesheet" href="htmlStyles.css">\n</head>\n<body>\n')
+    for item in hostList:
+        f.write('<div class="table">\n<table class="table">\n<tr>\n')
+        f.write('<td>\n'+item[0]+'\n</td>\n')
+        f.write('</tr>\n')
+        if item[1]:
+            for tcpPort in item[1]:
+                f.write('<tr>\n')
+                f.write('<td> TCP '+str(tcpPort)+'</td>')
+                f.write('</tr>\n')
+        f.write('</table>\n</div>\n<br>\n<br>')
+    f.write('\n</body>\n</html>')
+    f.close
+
+def generateOutput(itemList, title, headers, filename, outputFormat):
+    if not os.path.exists(args.outputBaseName):
+        os.makedirs(args.outputBaseName)
+    if outputFormat == 'html':
+        shutil.copy('css/htmlStyles.css', args.outputBaseName+'/htmlStyles.css')
+        f=open(args.outputBaseName+'/'+filename+'.html','w+')
+        f.write('<!DOCTYPE html>\n<html>\n<head>\n<link rel="stylesheet" href="htmlStyles.css">\n</head>\n<body>\n')
+        f.write('<h1 class="title">\n'+title+'</h1>\n')
+        f.write('<div class="table">\n<table class="table">\n<tr>\n')
+        for i in range(len(headers)):
+            f.write('<td>\n'+headers[i]+'\n</td>\n')
+        f.write('</tr>\n')
+        for item in itemList:
+            f.write('<tr>\n')
+            for i in range(len(headers)):
+                f.write('<td>'+str(item[i])+'</td>')
+            f.write('</tr>\n')
+        f.write('</table>\n</body>\n</html>')
+        f.close
+    elif outputFormat == 'csv':
+        f=open(args.outputBaseName+'/'+filename,'w+')
+        wrcsv = csv.writer(f, delimiter=',')
+        wrcsv.writerow(headers)
+        for item in itemList:
+            wrcsv.writerow(item)
+        f.close
+    else:
+        x = []
+        y = []
+        custom_style = Style(
+		  background='#ffffff',
+		  plot_background='transparent',
+		  foreground='#00000',
+		  font_family='arial',
+		  title_font_family='arial',
+		  title_font_size= 24,
+		  foreground_strong='#00000',
+		  foreground_subtle='#00000',
+		  transition='400ms ease-in',
+		  colors=('#7FAF7F', '#E8537A', '#E95355', '#E87653', '#E89B53'))
+        bar_chart=pygal.Bar(human_radeable=True, truncate_label=-1, interpolate='cubic', style=custom_style)
+        for row in itemList:
+            x.append(row[0])
+            y.append(row[1])
+        bar_chart.title = title
+        bar_chart.x_labels = map(str, x)
+        bar_chart.add('Total', y)
+        if outputFormat == "png":
+            fileName = args.outputBaseName+'/'+filename+'.png'
+            bar_chart.render_to_png(fileName)
+        if outputFormat == "svg":
+            fileName = args.outputBaseName+'/'+filename+'.svg'
+            bar_chart.render_to_file(fileName)
 
 def getPorts(number, sort, typePort):
     allPorts = []
@@ -162,17 +184,17 @@ def getPorts(number, sort, typePort):
         return sorted(totals, key=operator.itemgetter(1))[:number]
 
 def checkArgs(args):
-	if not os.path.isfile(args.inputFile):
-		print bcolors.FAIL + ' [!] - Input file cannot be found. Quitting...' + bcolors.ENDC
-		sys.exit()
-	if args.tports and args.tports not in ['tcp', 'udp', 'both']:
-		print bcolors.FAIL + ' [!] - Invalid port type specified. Quitting...' + bcolors.ENDC
-		sys.exit()
-	if args.outputFormat not in ['csv','svg','png','html']:
-		print bcolors.FAIL + ' [!] - Invalid output type specified. Quitting...' + bcolors.ENDC 
-		sys.exit()
-	if not args.c:
-		print bcolors.WARNING + '[!] - Custom item count not specified, defaulting to 10.' + bcolors.ENDC
+    if not os.path.isfile(args.inputFile):
+        print bcolors.FAIL + ' [!] - Input file cannot be found. Quitting...' + bcolors.ENDC
+        sys.exit()
+    if args.tports and args.tports not in ['tcp', 'udp', 'both']:
+        print bcolors.FAIL + ' [!] - Invalid port type specified. Quitting...' + bcolors.ENDC
+        sys.exit()
+    if args.outputFormat not in ['csv','svg','png','html']:
+        print bcolors.FAIL + ' [!] - Invalid output type specified. Quitting...' + bcolors.ENDC 
+        sys.exit()
+    if not args.c:
+        print bcolors.WARNING + '[!] - Custom item count not specified, defaulting to 10.' + bcolors.ENDC
 
 def getOperSys(number, sort):
     allOperSys = []
@@ -223,11 +245,10 @@ def getHosts(number,sort):
         return sorted(totals, key=operator.itemgetter(1))[:number]
 
 def getHostPortList():
-	list = []
-	for host in allhosts:
-		list.append([host.ipAddr, host.detailedServices])
-	return list
-		
+    list = []
+    for host in allhosts:
+        list.append([host.ipAddr, host.detailedServices])
+    return list
 
 
 parser = argparse.ArgumentParser(description='\n      * If optional graph flags are not specified: *\n\t  - All graphs are outputted\n\t  - Port counts will include TCP and UDP\n\t  - Item count will default to 10',formatter_class=argparse.RawTextHelpFormatter)
@@ -243,6 +264,7 @@ parser.add_argument('-tos', help='Most common operating systems.', action="store
 parser.add_argument('-bos', help='Least common operating systems.', action="store_true")
 parser.add_argument('-thosts', help='Hosts with most open ports', action="store_true")
 parser.add_argument('-bhosts', help='Hosts with least open ports', action="store_true")
+parser.add_argument('-hostlist', help='HTML output of all hosts with service / port info', action="store_true")
 args = parser.parse_args()
 printBanner()
 checkArgs(args)
@@ -250,7 +272,7 @@ populateObjects(args.inputFile)
 
 if args.c == None:
     args.c = '10'
-if (args.tports == None) and (args.bports == None) and (args.tservices == False) and (args.bservices == False) and (args.tos == False) and (args.bos == False) and (args.thosts == False) and (args.bhosts == False):
+if (args.tports == None) and (args.bports == None) and (args.hostlist == False) and (args.tservices == False) and (args.bservices == False) and (args.tos == False) and (args.bos == False) and (args.thosts == False) and (args.bhosts == False):
     print bcolors.WARNING + '[+] - No output flags specified, generating default outputs in '+args.outputFormat+' format.' + bcolors.ENDC
     args.tports = 'both'
     args.bports = 'both'
@@ -269,14 +291,14 @@ if args.tports:
     else:
         generateOutput(res, 'Top '+args.c+' Most Common Ports', ['Port','Total'], args.outputBaseName+'_Top'+args.c+'Ports', args.outputFormat)
         print bcolors.OKGREEN + '[+] - Generated \'Top '+args.c+' Most Common Ports\' output in '+args.outputFormat+' format.' + bcolors.ENDC
-if args.hostList:
-	if args.outputFormat != 'html':
-		print bcolors.WARNING + '[!] - \'All Hosts\' Services\' output is only generated in HTML.' + bcolors.ENDC
-	res = getHostPortList()
-	if not res:
-		print bcolors.WARNING + '[!] - No detailed host service info found, related output will not be generated.' + bcolors.ENDC
-	else:
-		generateHostPortListOutput(res, args.outputBaseName+'_hostList.html')
+if args.hostlist:
+    if args.outputFormat != 'html':
+        print bcolors.WARNING + '[!] - \'All Hosts\' Services\' output is only generated in HTML.' + bcolors.ENDC
+    res = getHostPortList()
+    if not res:
+        print bcolors.WARNING + '[!] - No detailed host service info found, related output will not be generated.' + bcolors.ENDC
+    else:
+        generateHostPortListOutput(res, args.outputBaseName+'_hostList.html')
         print bcolors.OKGREEN + '[+] - Generated \'All Hosts\' Services\' output in html format.' + bcolors.ENDC
 if args.bports:
     res = getPorts(int(args.c),'bottom',args.tports)
