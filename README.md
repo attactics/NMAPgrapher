@@ -19,7 +19,7 @@ The following output formats are supported:
   - CSV
 
 ###Where can I find a complete usage guide?
-Detailed usage information can be found at [...]
+Detailed usage information can be found at http://www.attactics.org/2015/09/nmapgrapher-tool-for-digesting-nmap-xml.html
 
 ###Your code sucks and it's broken
 I'm not a python ninja, so that is possible. Feel free to contact me on twitter (@evasive) and I can fix any bugs or issues you are experiencing.
